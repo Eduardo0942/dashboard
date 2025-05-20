@@ -1,4 +1,6 @@
-pandas
-plotly
 dash
 dash-bootstrap-components
+pandas
+plotly
+openpyxl
+gunicorn
