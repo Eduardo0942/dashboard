@@ -1,1 +1,1 @@
-gunicorn dashboard_vendas:server
+web: gunicorn dashboard_vendas:server
