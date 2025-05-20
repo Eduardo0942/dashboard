@@ -37,7 +37,7 @@ filtros = {
 
 # Inicialização do app
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
-server = app.server  # ESSENCIAL para Gunicorn, Render, etc.
+server = app.server  # ESSENCIAL para Gunicorn/Render
 
 # Layout
 app.layout = dbc.Container([
@@ -127,14 +127,6 @@ def atualizar_graficos(tipo, marca, lojas):
 
     return fig1, fig2, fig3, fig4, fig5, fig6
 
-from dash import Dash, html
-
-app = Dash(__name__)
-server = app.server  # <- ESSENCIAL para o Render
-
-app.layout = html.Div([
-    html.H1("Olá, mundo!")
-])
-
-if __name__ == "__main__":
+# Rodar localmente
+if __name__ == '__main__':
     app.run_server(debug=True)
