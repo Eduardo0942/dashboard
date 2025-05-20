@@ -9,10 +9,12 @@ import dash_bootstrap_components as dbc
 vendas_2020 = pd.read_excel("Base Vendas - 2020.xlsx")
 vendas_2021 = pd.read_excel("Base Vendas - 2021.xlsx")
 vendas_2022 = pd.read_excel("Base Vendas - 2022.xlsx")
+
 colunas_padrao = ["Data da Venda", "Ordem de Compra", "ID Produto", "ID Cliente", "Qtd Vendida", "ID Loja"]
 vendas_2020.columns = colunas_padrao
 vendas_2021.columns = colunas_padrao
 vendas_2022.columns = colunas_padrao
+
 vendas = pd.concat([vendas_2020, vendas_2021, vendas_2022], ignore_index=True)
 
 produtos = pd.read_excel("Cadastro Produtos.xlsx")
@@ -33,9 +35,11 @@ filtros = {
     "tipo": base["Tipo do Produto"].dropna().unique(),
 }
 
-app = dash.Dash(__name__)
-server = app.server
+# Inicialização do app
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+server = app.server  # ESSENCIAL para Gunicorn, Render, etc.
 
+# Layout
 app.layout = dbc.Container([
     html.H1("📈 Análises Alternativas de Vendas", className="text-center my-4"),
 
@@ -61,6 +65,7 @@ app.layout = dbc.Container([
     ])
 ], fluid=True)
 
+# Callback para atualizar marcas com base no tipo
 @app.callback(
     Output('filtro_marca', 'options'),
     Input('filtro_tipo', 'value')
@@ -71,6 +76,7 @@ def atualizar_marcas(tipo):
         return [{'label': m, 'value': m} for m in marcas]
     return []
 
+# Callback para gerar todos os gráficos
 @app.callback(
     [Output('grafico_variacao_anual', 'figure'),
      Output('grafico_qtd_tipo', 'figure'),
@@ -91,33 +97,36 @@ def atualizar_graficos(tipo, marca, lojas):
     if lojas:
         df = df[df['Nome da Loja'].isin(lojas)]
 
+    # Gráfico 1: Variação percentual
     vendas_ano = df.groupby("Ano")["Valor da Venda"].sum().pct_change().fillna(0).reset_index()
     vendas_ano["Variação (%)"] = vendas_ano["Valor da Venda"] * 100
+    fig1 = px.line(vendas_ano, x="Ano", y="Variação (%)", title="Variação Percentual de Vendas por Ano", markers=True, template='plotly_white')
 
-    fig1 = px.line(vendas_ano, x="Ano", y="Variação (%)",
-                   title="Variação Percentual de Vendas por Ano", markers=True,
-                   template='plotly_white')
-
+    # Gráfico 2: Quantidade por tipo
     fig2 = px.bar(df.groupby("Tipo do Produto")["Qtd Vendida"].sum().reset_index(),
                   x="Tipo do Produto", y="Qtd Vendida", title="Quantidade Vendida por Tipo de Produto",
                   color_discrete_sequence=["#20B2AA"], template='plotly_white')
 
-    fig3 = px.pie(df, names="Marca", values="Valor da Venda", title="Distribuição por Marca",
-                  template='plotly_white')
+    # Gráfico 3: Pizza por marca
+    fig3 = px.pie(df, names="Marca", values="Valor da Venda", title="Distribuição por Marca", template='plotly_white')
 
+    # Gráfico 4: Ticket médio
     ticket = df.groupby("Nome da Loja").apply(lambda x: x["Valor da Venda"].sum() / x["ID Cliente"].nunique()).reset_index(name="Ticket Médio")
     fig4 = px.bar(ticket, x="Ticket Médio", y="Nome da Loja", orientation='h',
                   title="Ticket Médio por Loja", template='plotly_white')
 
+    # Gráfico 5: Bolha por produto
     qtd_prod = df.groupby("Produto")[["Qtd Vendida", "Valor da Venda"]].sum().nlargest(10, "Qtd Vendida").reset_index()
     fig5 = px.scatter(qtd_prod, x="Qtd Vendida", y="Valor da Venda", size="Qtd Vendida", color="Produto",
                       title="Top 10 Produtos por Quantidade Vendida", template='plotly_white')
 
+    # Gráfico 6: Frequência clientes
     clientes = df.groupby("ID Cliente").size().nlargest(10).reset_index(name="Compras")
     fig6 = px.bar(clientes, x="ID Cliente", y="Compras", title="Top 10 Clientes por Frequência de Compra",
                   template='plotly_white', color_discrete_sequence=["#A52A2A"])
 
     return fig1, fig2, fig3, fig4, fig5, fig6
 
+# Rodar localmente
 if __name__ == '__main__':
     app.run_server(debug=True)
